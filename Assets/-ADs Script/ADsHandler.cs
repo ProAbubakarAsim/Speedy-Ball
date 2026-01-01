@@ -1,0 +1,184 @@
+﻿using UnityEngine;
+using System;
+using System.Collections;
+
+public class ADsHandler : MonoBehaviour
+{
+    public GameObject adsWaitingObj;
+    
+    string getRewardID;
+    bool bigBannerShow;
+
+    #region -------------------Developer's Function for ADs Calling--------------------
+    public void DEV_HideBannerADs()
+    {
+        if (AdmobMediation.instance)
+        {
+            AdmobMediation.instance.bothBanner_Hide();
+        }
+    }
+    public void DEV_ShowBanner_IfHide()
+    {
+        if (AdmobMediation.instance)
+        {
+            AdmobMediation.instance.bothBanner_Show();
+        }
+    }
+    public void DEV_ShowInterstitalAD()
+    {
+        adsWaitingObj.SetActive(true);
+
+        if (Time.timeScale == 0)
+        {
+            StartCoroutine(interstitialAD_Timescale_0());
+        }
+        else if (Time.timeScale == 1)
+        {
+            StartCoroutine(interstitalAD_Timescale_1());
+        }
+    }
+    public void DEV_showRewardedVideo(string rewardID)
+    {
+        getRewardID = rewardID;
+
+        if (!AdmobMediation.instance.validMobile)
+        {
+            returnReward();
+            return;
+        }
+
+        try
+        {
+            if (AdmobMediation.instance.checkRewardVideo_Load())
+            {
+                AdmobMediation.instance.rewardedAD_Show();
+            }
+            else
+            {
+                AdmobMediation.instance.CL_RewardedAD();
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.Log("There is an exception of showRewardAdmob_Unity     " + ex.Message.ToString());
+        }
+    }
+    public void DEV_ShowBigBanner()
+    {
+        if (!AdmobMediation.instance.validMobile)
+        {
+            return;
+        }
+
+        if (PlayerPrefs.GetInt("removeADs") != 1)
+        {
+            try
+            {
+                if (AdmobMediation.instance)
+                {
+                    if(bigBannerShow == false)
+                    {
+                        bigBannerShow = true;
+                        AdmobMediation.instance.bigBanner_Show();
+                    }
+                   
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.Log("There is an exception of Interstitial_AdmobUnity     " + ex.Message.ToString());
+            }
+
+        }
+    }
+    public void DEV_DestroyBigBanner()
+    {
+        if (!AdmobMediation.instance.validMobile)
+        {
+            return;
+        }
+
+        if (PlayerPrefs.GetInt("removeADs") != 1)
+        {
+            try
+            {
+                if (AdmobMediation.instance)
+                {
+                    bigBannerShow = false;
+                    AdmobMediation.instance.bigBanner_Destroy();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.Log("There is an exception of BigBanner Ad     " + ex.Message.ToString());
+            }
+
+        }
+    }
+    public void DEV_showAppOpen()
+    {
+        if (AdmobMediation.instance)
+        {
+            AdmobMediation.instance.appOpen_Show();
+        }
+    }
+    #endregion
+
+    #region ------------------Other Functions-----------------
+
+    public void loadInterstitialAD()
+    {
+        AdmobMediation.instance.requestIntestitialAD();
+    }
+    public void showInterstitialAD()
+    {
+        if (!AdmobMediation.instance.validMobile)
+        {
+            return;
+        }
+
+        
+
+        if (PlayerPrefs.GetInt("removeADs") != 1)
+        {
+            try
+            {
+                if (AdmobMediation.instance.checkInterstitial_Loaded())
+                {
+                   
+                    AdmobMediation.instance.interstitial_Show();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.Log("There is an exception of Interstitial_AdmobUnity     " + ex.Message.ToString());
+            }
+
+        }
+    }
+    IEnumerator interstitalAD_Timescale_1()
+    {
+        yield return new WaitForSeconds(3f);
+        adsWaitingObj.SetActive(false);
+    }
+    IEnumerator interstitialAD_Timescale_0()
+    {
+        float pauseTime = Time.realtimeSinceStartup + 3f;
+        while (Time.realtimeSinceStartup < pauseTime)
+        {
+            yield return 0;
+        }
+        adsWaitingObj.SetActive(false);
+    }
+
+    #endregion
+
+    public void returnReward()
+    {
+        if (getRewardID == "Watchvideo") 
+        {
+            Debug.Log("Reward Completed");
+            //Here you can give the reward to the user.
+        }
+    }
+}

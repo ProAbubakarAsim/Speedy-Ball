@@ -1,0 +1,545 @@
+﻿
+using UnityEngine;
+using System.Collections;
+using GoogleMobileAds.Api;
+using GoogleMobileAds.Common;
+using System;
+
+
+[Serializable]
+public class Admob_ADs_Handling
+{
+    [Header("Small_banners_1")]
+    public string smallBanner1;
+
+    [Header("Small_banners_2")]
+    public string smallBanner2;
+
+    [Header("Intersitial")]
+    public string interstitial;
+
+    [Header("RewardedVideo_AD")]
+    public string rewarded;
+
+    [Header("BigBanner_AD")]
+    public string bigBanner;
+
+    [Header("AppOpen_AD")]
+    public string appOpen;
+}
+
+
+public enum AdSizes
+{
+    normalBanner, SmartBanner
+}
+public class AdmobMediation : ADsHandler
+{
+    public static AdmobMediation instance;
+    [Space(10)]
+    public bool EnableTestModeAds;
+    public bool doubleBannerAD;
+
+    [HideInInspector]
+    public bool validMobile;
+
+    #region -------------AD Setting Declaration--------------------
+
+    [Header("Small Banner Size")]
+    [Space(5)]
+
+    public AdSizes SmallBanner;
+
+    [Header("Small Banners Position")]
+    public AdPosition banner1Pos;
+    public AdPosition banner2Pos;
+
+    [Header("Big Banner Position")]
+    public AdPosition BigBannerPos;
+
+    [Header("App Open Position")]
+    public ScreenOrientation appOpenPos;
+
+    #endregion
+
+    [Space(10)]
+
+    public Admob_ADs_Handling Android_Admob_ID = new Admob_ADs_Handling();
+    public Admob_ADs_Handling IOS_Admob_ID = new Admob_ADs_Handling();
+    public Admob_ADs_Handling Test_Admob_ID = new Admob_ADs_Handling();
+
+    #region ------------------Private Variable Declaration------------------
+
+    private InterstitialAd interstitial;
+
+    private BannerView bannerView1;
+    private BannerView bannerView2;
+    private RewardedAd rewardedAd;
+    private BannerView BigbannerView;
+
+    string BigBanner_adUnitId;
+
+    private AppOpenAd appOpenPlacement;
+    private DateTime loadTime;
+    private bool isShowingAd = false;
+
+    #endregion
+
+    #region ----------------------- Main Initialization --------------------------
+    private void Awake()
+    {
+        if (instance == null)
+        {
+            instance = this;
+        }
+        else
+        {
+            Destroy(this.gameObject);
+        }
+        DontDestroyOnLoad(this.gameObject);
+    }
+    private void Start()
+    {
+        
+
+        validMobile = mobileCompatible();
+
+        if (EnableTestModeAds)
+        {
+            Android_Admob_ID.interstitial = IOS_Admob_ID.interstitial = Test_Admob_ID.interstitial;
+            Android_Admob_ID.smallBanner1 = Android_Admob_ID.smallBanner2 = IOS_Admob_ID.smallBanner1 = IOS_Admob_ID.smallBanner2 = Test_Admob_ID.smallBanner1;
+            Android_Admob_ID.rewarded = IOS_Admob_ID.rewarded = Test_Admob_ID.rewarded;
+            Android_Admob_ID.bigBanner = IOS_Admob_ID.bigBanner = Test_Admob_ID.bigBanner;
+            Android_Admob_ID.appOpen = IOS_Admob_ID.appOpen = Test_Admob_ID.appOpen;
+        }
+
+        if (PlayerPrefs.GetInt("removeADs") != 1 && mobileCompatible())
+        {
+            #region AppOpen
+            if (PlayerPrefs.GetInt("removeADs") != 1)
+                requestAppOpenAD();
+            #endregion 
+
+            #region Admob
+
+            MobileAds.Initialize(initStatus =>
+            {
+                if (PlayerPrefs.GetInt("removeADs") != 1)
+                {
+                    requestBanner1();
+
+                    if (doubleBannerAD)
+                    {
+                        requestBanner2();
+                    }
+
+                    Invoke("interstitial_FirstTimeReq", 3f);
+                }
+
+                Invoke("rewardVideo_FT_Request", 6f);
+            });
+
+            #endregion
+        }
+    }
+    #endregion
+
+    #region ----------------------- Private Calling Functions -----------------------
+    private void interstitial_FirstTimeReq()
+    {
+        if (!mobileCompatible())
+        {
+            return;
+        }
+
+#if UNITY_ANDROID
+        string adUnitId = Android_Admob_ID.interstitial;
+#elif UNITY_IPHONE
+        string adUnitId = IOS_Admob_ID.interstitial;
+#else
+        string adUnitId = "unexpected_platform";
+#endif
+
+        // Initialize an InterstitialAd.
+        this.interstitial = new GoogleMobileAds.Api.InterstitialAd(adUnitId);
+        // Create an empty ad request.
+        AdRequest request = new AdRequest.Builder().Build();
+        // Load the interstitial with the request.
+        this.interstitial.LoadAd(request);
+
+        this.interstitial.OnAdClosed += HandleOnAdClosed;
+    }
+    private void rewardVideo_FT_Request()
+    {
+        if (!mobileCompatible())
+        {
+            return;
+        }
+
+#if UNITY_ANDROID
+        string adUnitId = Android_Admob_ID.rewarded;
+#elif UNITY_IPHONE
+        string adUnitId = IOS_Admob_ID.rewarded;
+#else
+        string adUnitId = "unexpected_platform";
+#endif
+
+        this.rewardedAd = new RewardedAd(adUnitId);
+
+        this.rewardedAd.OnUserEarnedReward += HandleUserEarnedReward;
+
+        this.rewardedAd.OnAdClosed += HandleRewardedAdClosed;
+
+        // Create an empty ad request.
+        AdRequest request = new AdRequest.Builder().Build();
+        // Load the rewarded ad with the request.
+        this.rewardedAd.LoadAd(request);
+
+    }
+    private void requestBanner1()
+    {
+        if (!mobileCompatible())
+        {
+            return;
+        }
+
+#if UNITY_ANDROID
+        string adUnitId = Android_Admob_ID.smallBanner1;
+#elif UNITY_IPHONE
+        string adUnitId = IOS_Admob_ID.smallBanner1;
+#else
+        string adUnitId = "unexpected_platform";
+#endif
+        Debug.Log("Banner Ad 1 Req");
+        // Create a 320x50 banner at the top of the screen.
+        bannerView1 = new BannerView(adUnitId, SmallBanner == AdSizes.normalBanner ? AdSize.Banner : AdSize.SmartBanner, banner1Pos);
+        AdRequest request = new AdRequest.Builder().Build();
+
+        // Load the banner with the request.
+        bannerView1.LoadAd(request);
+    }
+    private void requestBanner2()
+    {
+        if (!mobileCompatible())
+        {
+            return;
+        }
+
+#if UNITY_ANDROID
+        string adUnitId = Android_Admob_ID.smallBanner2;
+#elif UNITY_IPHONE
+        string adUnitId = IOS_Admob_ID.smallBanner2;
+#else
+        string adUnitId = "unexpected_platform";
+#endif
+
+        Debug.Log("Banner Ad 2 Req");
+        // Create a 320x50 banner at the top of the screen.
+        bannerView2 = new BannerView(adUnitId, SmallBanner == AdSizes.normalBanner ? AdSize.Banner : AdSize.SmartBanner, banner2Pos);
+        AdRequest request = new AdRequest.Builder().Build();
+
+        // Load the banner with the request.
+        bannerView2.LoadAd(request);
+    }
+
+    #endregion
+
+    #region --------------AD Loading Request------------------
+
+    public void requestIntestitialAD()
+    {
+        if (!mobileCompatible())
+        {
+            return;
+        }
+
+#if UNITY_ANDROID
+        string adUnitId = Android_Admob_ID.interstitial;
+#elif UNITY_IPHONE
+        string adUnitId = IOS_Admob_ID.interstitial;
+#else
+        string adUnitId = "unexpected_platform";
+#endif
+
+
+#if UNITY_ANDROID
+
+        // Create an empty ad request.
+        AdRequest request = new AdRequest.Builder().Build();
+        // Load the interstitial with the request.
+        this.interstitial.LoadAd(request);
+        
+
+#elif UNITY_IPHONE
+
+        // Initialize an InterstitialAd.
+        this.interstitial = new GoogleMobileAds.Api.InterstitialAd(adUnitId);
+        // Create an empty ad request.
+        AdRequest request = new AdRequest.Builder().Build();
+        // Load the interstitial with the request.
+        this.interstitial.LoadAd(request);
+
+        this.interstitial.OnAdClosed += HandleOnAdClosed;
+
+#endif
+
+    }
+    public void CL_RewardedAD()
+    {
+        Debug.Log("At CreateAndLoadRewardedAd");
+        if (!mobileCompatible())
+        {
+            return;
+        }
+        // Create an empty ad request.
+        AdRequest request = new AdRequest.Builder().Build();
+        // Load the rewarded ad with the request.
+        this.rewardedAd.LoadAd(request);
+    }
+    private void BigBannerRequest()
+    {
+#if UNITY_ANDROID
+            BigBanner_adUnitId = Android_Admob_ID.bigBanner;
+#elif UNITY_IOS
+            BigBanner_adUnitId = IOS_Admob_ID.bigBanner;
+#else
+            BigBanner_adUnitId = "unexpected_platform";
+#endif
+
+
+        AdSize adSize = new AdSize(300, 250);
+        this.BigbannerView = new BannerView(BigBanner_adUnitId, AdSize.MediumRectangle, BigBannerPos);
+
+        // Create an empty ad request.
+        AdRequest request = new AdRequest.Builder().Build();
+
+        // Load the banner with the request.
+        this.BigbannerView.LoadAd(request);
+    }
+    public void HandleUserEarnedReward(object sender, Reward args)
+    {
+        MobileAdsEventExecutor.ExecuteInUpdate(() =>
+        {
+            Debug.Log("givereward 2");
+            //AdsHandler.instance.rewardCallBack();
+        });
+    }
+    public void HandleRewardedAdClosed(object sender, EventArgs args)
+    {
+        MobileAdsEventExecutor.ExecuteInUpdate(() =>
+        {
+            this.CL_RewardedAD();
+        });
+    }
+    public void HandleOnAdClosed(object sender, EventArgs args)
+    {
+        MobileAdsEventExecutor.ExecuteInUpdate(() =>
+        {
+            this.interstitial.Destroy();
+        });
+    }
+
+    #region AppOpen AD
+    private bool appOpen_Loaded
+    {
+        get
+        {
+            return appOpenPlacement != null && (System.DateTime.UtcNow - loadTime).TotalHours < 4;
+        }
+    }
+    public void requestAppOpenAD()
+    {
+        if (!mobileCompatible())
+        {
+            return;
+        }
+
+#if UNITY_ANDROID
+        string adUnitId_AppOpen = Android_Admob_ID.appOpen;
+#elif UNITY_IPHONE
+        string adUnitId_AppOpen = IOS_Admob_ID.appOpen;
+#else
+        string adUnitId_AppOpen = "unexpected_platform";
+#endif
+
+
+        var request = new AdRequest.Builder().Build();
+
+        // Load an app open ad for portrait orientation
+        AppOpenAd.LoadAd(adUnitId_AppOpen, appOpenPos, request, ((appOpenAd, error) =>
+        {
+            if (error != null)
+            {
+                // Handle the error.
+                Debug.LogFormat("Failed to load the AD.", error.LoadAdError.GetMessage());
+
+                return;
+            }
+
+            // App open ad is loaded
+            appOpenPlacement = appOpenAd;
+            Debug.Log("AppOpen AD is loaded");
+
+            // COMPLETE: Keep track of time when the ad is loaded.
+            loadTime = DateTime.UtcNow;
+        }));
+    }
+
+
+    private void HandleAdDidDismissFullScreenContent(object sender, EventArgs args)
+    {
+        Debug.Log("Closed app open ad");
+        // Set the ad to null to indicate that AppOpenAdManager no longer has another ad to show.
+        appOpenPlacement = null;
+        isShowingAd = false;
+        requestAppOpenAD();
+    }
+    private void HandleAdFailedToPresentFullScreenContent(object sender, AdErrorEventArgs args)
+    {
+        Debug.LogFormat("Failed to present the ad (reason: {0})", args.AdError.GetMessage());
+        // Set the ad to null to indicate that AppOpenAdManager no longer has another ad to show.
+        appOpenPlacement = null;
+        requestAppOpenAD();
+    }
+    private void HandleAdDidPresentFullScreenContent(object sender, EventArgs args)
+    {
+        Debug.Log("Displayed app open ad");
+        isShowingAd = true;
+    }
+    private void HandleAdDidRecordImpression(object sender, EventArgs args)
+    {
+        Debug.Log("Recorded ad impression");
+    }
+    private void HandlePaidEvent(object sender, AdValueEventArgs args)
+    {
+        Debug.LogFormat("Received paid event. (currency: {0}, value: {1}",
+            args.AdValue.CurrencyCode, args.AdValue.Value);
+    }
+    #endregion
+
+    #endregion
+
+    #region ------------------ check Mobile Compatibility ----------------
+    public static bool mobileCompatible()
+    {
+
+#if UNITY_EDITOR
+        return true;
+#elif UNITY_ANDROID
+        if (SystemInfo.systemMemorySize < 1536)
+        {
+            return false;
+        }
+        else
+        {
+            return true;
+        }
+#elif UNITY_IPHONE
+            return true;
+#endif
+
+    }
+    #endregion
+
+    #region ----------- Admob Mediation Funtions ---------------
+
+    public bool checkInterstitial_Loaded()
+    {
+        if (this.interstitial.IsLoaded())
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    public void interstitial_Show()
+    {
+        if (this.interstitial.IsLoaded())
+        {
+            this.interstitial.Show();
+        }
+    }
+    public void bothBanner_Show()
+    {
+        if (bannerView1 != null)
+        {
+            bannerView1.Show();
+        }
+
+        if (doubleBannerAD)
+        {
+            if (bannerView2 != null)
+            {
+                bannerView2.Show();
+            }
+        }
+
+    }
+    public void bothBanner_Hide()
+    {
+        if (bannerView1 != null)
+            bannerView1.Hide();
+
+        if (doubleBannerAD)
+        {
+            if (bannerView2 != null)
+                bannerView2.Hide();
+        }
+    }
+    public void bigBanner_Show()
+    {
+        if (PlayerPrefs.GetInt("removeADs") != 1)
+        {
+            this.BigBannerRequest();
+        }
+    }
+    public void bigBanner_Destroy()
+    {
+        if (BigbannerView != null)
+        {
+            BigbannerView.Destroy();
+        }
+    }
+    public bool checkRewardVideo_Load()
+    {
+        if (this.rewardedAd.IsLoaded())
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    public void rewardedAD_Show()
+    {
+        if (this.rewardedAd.IsLoaded())
+        {
+            this.rewardedAd.Show();
+        }
+    }
+    public void appOpen_Show()
+    {
+        if (PlayerPrefs.GetInt("removeADs") != 1)
+        {
+            if (!appOpen_Loaded || isShowingAd)
+            {
+                return;
+            }
+
+            appOpenPlacement.OnAdDidDismissFullScreenContent += HandleAdDidDismissFullScreenContent;
+            appOpenPlacement.OnAdFailedToPresentFullScreenContent += HandleAdFailedToPresentFullScreenContent;
+            appOpenPlacement.OnAdDidPresentFullScreenContent += HandleAdDidPresentFullScreenContent;
+            appOpenPlacement.OnAdDidRecordImpression += HandleAdDidRecordImpression;
+            appOpenPlacement.OnPaidEvent += HandlePaidEvent;
+
+            appOpenPlacement.Show();
+
+        }
+    }
+
+    #endregion
+
+}

@@ -1,0 +1,79 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace OnefallGames
+{
+    public class HomeViewController : MonoBehaviour
+    {
+        [SerializeField] private Text currentLevelTxt, coinsText;
+        [SerializeField] private DailyRewardViewController dailyRewardViewController;
+
+        public DailyRewardViewController DailyRewardViewController { get { return dailyRewardViewController; } }
+
+
+        private int settingButtonTurn = 1;
+
+        public void OnShow()
+        {
+            dailyRewardViewController.gameObject.SetActive(false);
+            currentLevelTxt.text = PlayerPrefs.GetInt(PlayerPrefsKeys.PPK_SAVED_LEVEL, 1).ToString();
+            coinsText.text = PlayerPrefs.GetInt(PlayerPrefsKeys.PPK_TOTAL_COINS).ToString();
+            ViewManager.Instance.loading.SetActive(false);
+
+        }
+        public void PlayBtn()
+        {
+            if (AdmobMediation.instance)
+            {
+                AdmobMediation.instance.DEV_ShowInterstitalAD();
+            }
+            ViewManager.Instance.PlayClickButtonSound();
+            ViewManager.Instance.OpenModeSelection();
+        }
+
+
+        public void RewardBtn()
+        {
+            ViewManager.Instance.PlayClickButtonSound();
+            StartCoroutine(CRHandleRewardBtn());
+        }
+        private IEnumerator CRHandleRewardBtn()
+        {
+            yield return new WaitForSeconds(0.5f);
+            dailyRewardViewController.gameObject.SetActive(true);
+            dailyRewardViewController.OnShow();
+        }
+
+
+        public void CharacterBtn()
+        {
+            ViewManager.Instance.PlayClickButtonSound();
+            ViewManager.Instance.LoadScene("Character", 0.25f);
+        }
+        public void ShareBtn()
+        {
+            ViewManager.Instance.PlayClickButtonSound();
+        }
+        private IEnumerator CRHandleUpgradeBtn()
+        {
+            yield return new WaitForSeconds(0.5f);
+            ViewManager.Instance.LoadScene("Upgrade", 0.25f);
+        }
+
+        public void RateAppBtn()
+        {
+            ViewManager.Instance.PlayClickButtonSound();
+        }
+
+        public void LeaderboardBtn()
+        {
+            ViewManager.Instance.PlayClickButtonSound();
+        }
+        public void RemoveAdsBtn()
+        {
+            ViewManager.Instance.PlayClickButtonSound();
+        }
+    }
+}

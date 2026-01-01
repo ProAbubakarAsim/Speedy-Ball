@@ -1,0 +1,342 @@
+﻿using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.Serialization;
+
+namespace OnefallGames
+{
+    #region Ingame enums
+    public enum IngameState
+    {
+        Prepare = 0,
+        Playing = 1,
+        Revive = 2,
+        GameOver = 3,
+        CompletedLevel = 4,
+    }
+
+
+    public enum PlayerState
+    {
+        Prepare = 0,
+        Living = 1,
+        CompletedLevel = 2,
+        Died = 3,
+    }
+
+    public enum ItemType
+    {
+        COIN = 0,
+        LASER = 1,
+        MAGNET = 2,
+        SpeedBost = 3,
+        AdHurdle  ,
+    }
+
+
+    public enum PlatformType
+    {
+        GREEN_PLATFORM = 0,
+        BLUE_PLATFORM = 1,
+        GRAY_PLATFORM = 2,
+        RED_PLATFORM = 3,
+        YELLOW_PLATFORM = 4,
+        PINK_PLATFORM = 5,
+        WHITE_PLATFORM = 6,
+        PURPLE_PLATFORM = 7,
+        CYAN_PLATFORM = 8,
+        BLACK_PLATFORM = 9,
+    }
+
+
+    public enum ObstacleSize
+    {
+        SMALL_OBSTACLE = 0,
+        NORMAL_OBSTACLE = 1,
+        MEDIUM_OBSTACLE = 2,
+        BIG_OBSTACLE  = 3,
+        HUGE_OBSTACLE = 4,
+    }
+
+
+
+    public enum PlatformPosition
+    {
+        CENTER = 0,
+        CENTER_FORWARD = 1,
+        CENTER_BACK = 2,
+
+        LEFT = 3,
+        LEFT_FORWARD = 4,
+        LEFT_BACK = 5,
+
+        RIGHT = 6,
+        RIGHT_FORWARD = 7,
+        RIGHT_BACK = 8,
+    }
+
+
+
+    public enum DayItem
+    {
+        DAY_1 = 0,
+        DAY_2 = 1,
+        DAY_3 = 2,
+        DAY_4 = 3,
+        DAY_5 = 4,
+        DAY_6 = 5,
+        DAY_7 = 6,
+        DAY_8 = 7,
+        DAY_9 = 8,
+    }
+
+    #endregion
+
+
+    #region Ads enums
+    public enum BannerAdType
+    {
+        NONE = 0,
+        UNITY = 1,
+        ADMOB = 2,
+    }
+
+    public enum InterstitialAdType
+    {
+        UNITY = 0,
+        ADMOB = 1,
+    }
+    public enum RewardedAdType
+    {
+        UNITY = 0,
+        ADMOB = 1,
+    }
+    #endregion
+
+
+    #region View enums
+    public enum ViewType
+    {
+        HOME_VIEW = 1,
+        INGAME_VIEW = 2,
+        LOADING_VIEW = 3,
+        CHARACTER_VIEW = 4,
+    }
+    #endregion
+
+
+    #region Classes
+    [System.Serializable]
+    public class LevelConfiguration
+    {
+        [Header("Level Number Configuration")]
+        [SerializeField] private int minLevel = 1;
+        public int MinLevel { get { return minLevel; } }
+        [SerializeField] private int maxLevel = 5;
+        public int MaxLevel { get { return maxLevel; } }
+
+
+        [Header("Background Configuration")]
+        [SerializeField] private Color backgroundColor = Color.green;
+        public Color BackgroundColor { get { return backgroundColor; } }
+        [SerializeField] private SoundClip backgroundMusicClip = null;
+        public SoundClip BackgroundMusicClip { get { return backgroundMusicClip; } }
+
+
+        [Header("Player Configuration")]
+        [SerializeField] [Range(1, 250)] private int minPlayerMovingSpeed = 1;
+        public int MinPlayerMovingSpeed { get { return minPlayerMovingSpeed; } }
+        [SerializeField] [Range(1, 250)] private int maxPlayerMovingSpeed = 7;
+        public int MaxPlayerMovingSpeed { get { return maxPlayerMovingSpeed; } }
+
+
+        [Header("Platform Configuration")]
+        [SerializeField] private PlatformType platformType = PlatformType.GREEN_PLATFORM;
+        public PlatformType PlatformType { get { return platformType; } }
+        [SerializeField] private int minPlatformAmount = 10;
+        public int MinPlatformAmount { get { return minPlatformAmount; } }
+        [SerializeField] private int maxPlatformAmount = 10;
+        public int MaxPlatformAmount { get { return maxPlatformAmount; } }
+        [SerializeField] [Range(0f, 1f)] private float platformDistanceFrequency = 0.3f;
+        public float DistanceFrequency { get { return platformDistanceFrequency; } }
+        [SerializeField] [Range(3, 30)] private int minDistanceAmount = 3;
+        public int MinDistanceAmount { get { return minDistanceAmount; } }
+        [SerializeField] [Range(3, 30)] private int maxDistanceAmount = 7;
+        public int MaxDistanceAmount { get { return maxDistanceAmount; } }
+
+
+
+        [Header("Laser Configuration")]
+        [SerializeField] [Range(0f, 1f)] private float laserFrequency = 0.1f;
+        public float LaserFrequency { get { return laserFrequency; } }
+        [SerializeField] [Range(1, 60)] private int activeLaserTime = 1;
+        public int ActiveLaserTime { get { return activeLaserTime; } }
+
+
+        [Header("Magnet Configuration")]
+        [SerializeField] [Range(0f, 1f)] private float magnetFrequency = 0.1f;
+        public float MagnetFrequency { get { return magnetFrequency; } }
+        [SerializeField] [Range(1, 60)] private int activeMagnetTime = 1;
+        public int ActiveMagnetTime { get { return activeMagnetTime; } }
+
+        [Header("Booster Configuration")]
+        [SerializeField] [Range(0f, 1f)] private float boostFrequency = 0.1f;
+        public float BoostFrequency { get { return boostFrequency; } }
+        [SerializeField] [Range(1, 60)] private int activeBoosterTime = 1;
+        public int ActiveBoosterTime { get { return activeBoosterTime; } }
+
+        [Header("Ad Hurdle Configuration")]
+        [SerializeField] [Range(0f, 1f)] private float adFrequency = 0.1f;
+        public float ADFrequency { get { return adFrequency; } }
+        [SerializeField] [Range(1, 60)] private int activeAdTime = 1;
+        public int ActiveAdTime { get { return activeAdTime; } }
+
+
+        [Header("Coin Configuration")]
+        [SerializeField] [Range(0f, 1f)] private float coinFrequency = 0.1f;
+        public float CoinFrequency { get { return coinFrequency; } }
+        [SerializeField] [Range(1, 10)] private int minCoinAmount = 1;
+        public int MinCoinAmount { get { return minCoinAmount; } }
+        [SerializeField] [Range(1, 10)] private int maxCoinAmount = 5;
+        public int MaxCoinAmount { get { return maxCoinAmount; } }
+
+        [Header("Obstacle Configuration")]
+        [SerializeField] [Range(0f, 1f)] private float obstacleFrequency = 0.1f;
+        public float ObstacleFrequency { get { return obstacleFrequency; } }
+        [SerializeField] [Range(0, 4)] private int minObstacleAmount = 0;
+        public int MinObstacleAmount { get { return minObstacleAmount; } }
+        [SerializeField] [Range(0, 4)] private int maxObstacleAmount = 3;
+        public int MaxObstacleAmount { get { return maxObstacleAmount; } }
+
+        [SerializeField] [Range(0f, 1f)] private float movingObstacleFrequency = 0.3f;
+        public float MovingObstacleFrequency { get { return movingObstacleFrequency; } }
+        [SerializeField] [Range(1, 50)] private int minObstacleMovingSpeed = 1;
+        public int MinObstacleMovingSpeed { get { return minObstacleMovingSpeed; } }
+        [SerializeField] [Range(1, 50)] private int maxObstacleMovingSpeed = 2;
+        public int MaxObstacleMovingSpeed { get { return maxObstacleMovingSpeed; } }
+
+
+        [SerializeField] private ObstacleSize[] obstacleSizes = null;
+        public ObstacleSize[] ObstacleSizes { get { return obstacleSizes; } }
+    }
+
+
+
+    [System.Serializable]
+    public class PlatformConfiguration
+    {
+        [SerializeField] private PlatformType platformType = PlatformType.GREEN_PLATFORM;
+        public PlatformType PlatformType { get { return platformType; } }
+        [SerializeField] private PlatformController platformControllerPrefab = null;
+        public PlatformController PlatformControllerPrefab { get { return platformControllerPrefab; } }
+        [SerializeField] private FinishPlatformController finishPlatformControllerPrefab = null;
+        public FinishPlatformController FinishPlatformControllerPrefab { get { return finishPlatformControllerPrefab; } }
+    }
+
+
+
+
+    [System.Serializable]
+    public class SoundClip
+    {
+        [SerializeField] private AudioClip audioClip = null;
+        public AudioClip AudioClip { get { return audioClip; } }
+    }
+
+    [System.Serializable]
+    public class InterstitialAdConfig
+    {
+        public IngameState GameStateForShowingAd = IngameState.Prepare;
+        public int GameStateCountForShowingAd = 3;
+        public float ShowAdDelay = 0.2f;
+        public List<InterstitialAdType> ListInterstitialAdType = new List<InterstitialAdType>();
+    }
+
+
+    public class PlatformParameterData
+    {
+        public int ObstacleAmount { private set; get; }
+        public void SetObstacleAmount(int obstacleAmount)
+        {
+            ObstacleAmount = obstacleAmount;
+        }
+
+
+        public ObstacleSize ObstacleSize { private set; get; }
+        public void SetObstacleSize(ObstacleSize obstacleSize)
+        {
+            ObstacleSize = obstacleSize;
+        }
+
+        public float MovingObstacleFrequency { private set; get; }
+        public void SetMovingObstacleFrequency(float movingObstacleFrequency)
+        {
+            MovingObstacleFrequency = movingObstacleFrequency;
+        }
+
+        public int MinObstacleMovingSpeed { private set; get; }
+        public void SetMinObstacleMovingSpeed(int minObstacleMovingSpeed)
+        {
+            MinObstacleMovingSpeed = minObstacleMovingSpeed;
+        }
+
+        public int MaxObstacleMovingSpeed { private set; get; }
+        public void SetMaxObstacleMovingSpeed(int maxObstacleMovingSpeed)
+        {
+            MaxObstacleMovingSpeed = maxObstacleMovingSpeed;
+        }
+
+
+        public float CoinFrequency { private set; get; }
+        public void SetCoinFrequency(float coinFrequency)
+        {
+            CoinFrequency = coinFrequency;
+        }
+        public int CoinAmount { private set; get; }
+        public void SetCoinAmount(int coinAmount)
+        {
+            CoinAmount = coinAmount;
+        }
+
+        public float LaserFrequency { private set; get; }
+        public void SetLaserFrequency(float laserFrequency)
+        {
+            LaserFrequency = laserFrequency;
+        }
+
+        public float MagnetFrequency { private set; get; }
+        public void SetMagnetFrequency(float magnetFrequency)
+        {
+            MagnetFrequency = magnetFrequency;
+        }
+
+        public float SpeedBoostFrequency { private set; get; }
+        public void SetSpeedBoostFrequency(float BoostFrequency)
+        {
+            SpeedBoostFrequency = BoostFrequency;
+        }
+        
+        public float AdHurldeFrequenncy { private set; get; }
+        public void SetAdHurdleFrequency(float AdFrequency)
+        {
+            AdHurldeFrequenncy = AdFrequency;
+        }
+    }
+
+
+
+    public class PlayerLeaderboardData
+    {
+        public string Name { private set; get; }
+        public void SetName(string name)
+        {
+            Name = name;
+        }
+
+        public int Level { private set; get; }
+        public void SetLevel(int level)
+        {
+            Level = level;
+        }
+    }
+    #endregion
+}

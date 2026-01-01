@@ -1,0 +1,28 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+public class SoundsManager : MonoBehaviour
+{
+    public static SoundsManager instance;
+    public AudioSource ClickBtnSound;
+    public AudioSource BoostSFX;
+
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        instance = this ;
+    }
+
+    // Update is called once per frame
+    public void ClickButton()
+    {
+        if (ClickBtnSound)
+        {
+            ClickBtnSound.Play();
+
+        }
+    }
+}

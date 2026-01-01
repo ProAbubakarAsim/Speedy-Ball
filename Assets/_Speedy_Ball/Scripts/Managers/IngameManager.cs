@@ -1,0 +1,426 @@
+﻿using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+namespace OnefallGames
+{
+    public class IngameManager : MonoBehaviour
+    {
+
+        public static IngameManager Instance;/*{ private set; get; }*/
+        public int LevelNumberForTutorial;
+        public GameObject[] Balls;
+        public static event System.Action<IngameState> IngameStateChanged = delegate { };
+
+        public IngameState IngameState
+        {
+            get
+            {
+                return ingameState;
+            }
+            private set
+            {
+                if (value != ingameState)
+                {
+                    ingameState = value;
+                    IngameStateChanged(ingameState);
+                }
+            }
+        }
+
+        [Header("Enter a number of level to test. Set back to 0 to disable this feature.")]
+        [SerializeField] private int testingLevel = 0;
+
+
+        [Header("Ingame Configuration")]
+        [SerializeField] private int reviveCountDownTime = 5;
+        [SerializeField] private int firstPlatformAmount = 7;
+
+        [Header("Level Configuration")]
+        [SerializeField] private List<LevelConfiguration> listLevelConfiguration = new List<LevelConfiguration>();
+
+
+        [Header("Ingame References")]
+        [SerializeField] private Material skyboxMaterial = null;
+        [SerializeField] private ParticleSystem[] completedLevelEffects = null;
+
+
+        public int ReviveCountDownTime { get { return reviveCountDownTime; } }
+        public bool IsRevived { private set; get; }
+        public int CurrentLevel { private set; get; }
+
+
+        private IngameState ingameState = IngameState.GameOver;
+        private LevelConfiguration currentLevelConfig = null;
+        private SoundClip backgroundMusic = null;
+        private Vector3 nextPlatformPosition = Vector3.zero;
+        private int totalPlatformAmount = 0;
+        private int createdPlatformAmount = 0;
+        private int passedPlatformAmount = 0;
+
+
+        private void Awake()
+        {
+            LevelNumberForTutorial = PlayerPrefs.GetInt(PlayerPrefsKeys.PPK_SAVED_LEVEL);
+            if (Instance == null)
+            {
+                Instance = this;
+            }
+            else
+            {
+                DestroyImmediate(Instance.gameObject);
+                Instance = this;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (Instance == this)
+            {
+                Instance = null;
+            }
+        }
+
+
+        private void Start()
+        {
+            Time.timeScale = 1;
+            Sound();
+            Application.targetFrameRate = 60;
+            ViewManager.Instance.OnShowView(ViewType.INGAME_VIEW);
+            //ServicesManager.Instance.CoinManager.ResetCollectedCoins();
+            IngameState = IngameState.Prepare;
+            ingameState = IngameState.Prepare;
+            Balls[PlayerPrefs.GetInt("BallNumber")].SetActive(true);
+
+
+            //Add other actions here
+            IsRevived = false;
+            completedLevelEffects[0].transform.root.gameObject.SetActive(false);
+            nextPlatformPosition = PlayerController.Instance.transform.position;
+            totalPlatformAmount = 0;
+            passedPlatformAmount = 0;
+            createdPlatformAmount = 0;
+
+            //Set current level
+            if (!PlayerPrefs.HasKey(PlayerPrefsKeys.PPK_SAVED_LEVEL))
+            {
+                PlayerPrefs.SetInt(PlayerPrefsKeys.PPK_SAVED_LEVEL, 1);
+            }
+
+            //Load level parameters
+            CurrentLevel = (testingLevel != 0) ? testingLevel : PlayerPrefs.GetInt(PlayerPrefsKeys.PPK_SAVED_LEVEL);
+            foreach (LevelConfiguration levelConfigs in listLevelConfiguration)
+            {
+                if (CurrentLevel >= levelConfigs.MinLevel && CurrentLevel < levelConfigs.MaxLevel)
+                {
+                    //Setup parameters
+                    currentLevelConfig = levelConfigs;
+                    totalPlatformAmount = Random.Range(levelConfigs.MinPlatformAmount, levelConfigs.MaxPlatformAmount);
+                    PlayerController.Instance.SetMovingSpeed(Random.Range(levelConfigs.MinPlayerMovingSpeed, levelConfigs.MaxPlayerMovingSpeed));
+                    backgroundMusic = levelConfigs.BackgroundMusicClip;
+
+                    //Set background and fog colors
+                    skyboxMaterial.SetColor("_Tint", levelConfigs.BackgroundColor);
+                    RenderSettings.fogColor = levelConfigs.BackgroundColor;
+                    break;
+                }
+            }
+
+
+            for (int i = 0; i < firstPlatformAmount; i++)
+            {
+                if (i < 2)
+                    CreateNextPlatform();
+                else
+                    CreateNextPlatform(true);
+            }
+
+            Invoke(nameof(PlayingGame), 0.15f);
+        }
+        public void Sound()
+        {
+            if (PlayerPrefs.GetInt("Music") == 1)
+            {
+                GetComponent<AudioSource>().volume = 0f;
+            }
+            else
+            {
+                GetComponent<AudioSource>().volume = 1f;
+            }
+        }
+
+        /// <summary>
+        /// Actual start the game (call Playing event) and handle other actions.
+        /// </summary>
+        public void PlayingGame()
+        {
+            //Fire event
+            IngameState = IngameState.Playing;
+            ingameState = IngameState.Playing;
+
+            //Add other actions here
+            if (IsRevived)
+            {
+                ResumeBackgroundMusic(0.5f);
+            }
+            else
+            {
+                PlayBackgroundMusic(0.5f);
+            }
+        }
+
+
+        /// <summary>
+        /// Call Revive event and handle other actions.
+        /// </summary>
+        public void Revive()
+        {
+            //Fire event
+            IngameState = IngameState.Revive;
+            ingameState = IngameState.Revive;
+
+            //Add other actions here
+            PauseBackgroundMusic(0.5f);
+            
+        }
+
+
+
+        /// <summary>
+        /// Call CompleteLevel event and handle other actions.
+        /// </summary>
+        public void CompleteLevel()
+        {
+            //Fire event
+            IngameState = IngameState.CompletedLevel;
+            ingameState = IngameState.CompletedLevel;
+
+            //Add other actions here
+            StopBackgroundMusic(0.5f);
+            //ServicesManager.Instance.SoundManager.PlaySound(ServicesManager.Instance.SoundManager.levelCompleted);
+            completedLevelEffects[0].transform.root.gameObject.SetActive(true);
+            foreach (ParticleSystem o in completedLevelEffects)
+            {
+                o.Play();
+            }
+
+            //Save level
+            if (testingLevel == 0)
+            {
+                PlayerPrefs.SetInt(PlayerPrefsKeys.PPK_SAVED_LEVEL, PlayerPrefs.GetInt(PlayerPrefsKeys.PPK_SAVED_LEVEL) + 1);
+
+                //Report level to leaderboard
+                string username = PlayerPrefs.GetString(PlayerPrefsKeys.PPK_SAVED_USER_NAME);
+                if (!string.IsNullOrEmpty(username))
+                {
+                    //ServicesManager.Instance.LeaderboardManager.SetPlayerLeaderboardData();
+                }
+            }
+        }
+
+
+
+        /// <summary>
+        /// Call GameOver event and handle other actions.
+        /// </summary>
+        public void GameOver()
+        {
+            //Fire event
+            IngameState = IngameState.GameOver;
+            ingameState = IngameState.GameOver;
+
+            //Add other actions here
+            StopBackgroundMusic(0.5f);
+            //ServicesManager.Instance.SoundManager.PlaySound(ServicesManager.Instance.SoundManager.levelFailed);
+        }
+
+
+        private void PlayBackgroundMusic(float delay)
+        {
+            StartCoroutine(CRPlayBGMusic(delay));
+        }
+
+        private IEnumerator CRPlayBGMusic(float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            //ServicesManager.Instance.SoundManager.PlayMusic(backgroundMusic, 0.5f);
+        }
+
+        private void StopBackgroundMusic(float delay)
+        {
+            StartCoroutine(CRStopBGMusic(delay));
+        }
+
+        private IEnumerator CRStopBGMusic(float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            //ServicesManager.Instance.SoundManager.StopMusic(0.5f);
+        }
+
+        private void PauseBackgroundMusic(float delay)
+        {
+            StartCoroutine(CRPauseBGMusic(delay));
+        }
+
+        private IEnumerator CRPauseBGMusic(float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            //ServicesManager.Instance.SoundManager.PauseMusic();
+        }
+
+        private void ResumeBackgroundMusic(float delay)
+        {
+            StartCoroutine(CRResumeBGMusic(delay));
+        }
+
+        private IEnumerator CRResumeBGMusic(float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            //ServicesManager.Instance.SoundManager.ResumeMusic();
+        }
+
+
+        //////////////////////////////////////////////////Publish functions
+
+
+        /// <summary>
+        /// Set the game back to Playing state
+        /// </summary>
+        public void SetContinueGame()
+        {
+            IsRevived = true;
+            PlayingGame();
+            
+        }
+
+
+
+        /// <summary>
+        /// Handle actions when player died.
+        /// </summary>
+        public void HandlePlayerDied()
+        {
+            if (IsRevived )
+            {
+                GameOver();
+            }
+            else
+            {
+                Revive();
+            }
+        }
+
+
+
+        /// <summary>
+        /// Get the time for active magnet mode.
+        /// </summary>
+        /// <returns></returns>
+        public float GetMagnetModeTime()
+        {
+            return currentLevelConfig.ActiveMagnetTime;
+        }
+
+
+
+        /// <summary>
+        /// Get the time for active laser mode.
+        /// </summary>
+        /// <returns></returns>
+        public float GetLaserModeTime()
+        {
+            return currentLevelConfig.ActiveLaserTime;
+        }
+
+        public float GetBoosterTime()
+        {
+            return currentLevelConfig.ActiveBoosterTime;
+        }
+
+        public float GetAdTime()
+        {
+            return currentLevelConfig.ActiveAdTime;
+        }
+
+
+        /// <summary>
+        /// Get the time for active shield mode.
+        /// </summary>
+        /// <returns></returns>
+        public float GetShieldModeTime()
+        {
+            return currentLevelConfig.LaserFrequency;
+        }
+
+
+        /// <summary>
+        /// Increase passedPlatformAmount by 1.
+        /// </summary>
+        public void CountPassedPlatform()
+        {
+            passedPlatformAmount++;
+            ViewManager.Instance.IngameViewController.PlayingViewController.UpdateLevelProgressImg(passedPlatformAmount, totalPlatformAmount);
+        }
+
+
+
+        /// <summary>
+        /// Create the next platform.
+        /// </summary>
+        public void CreateNextPlatform(bool isCreatedObjects = false)
+        {
+            if (createdPlatformAmount == totalPlatformAmount && !completedLevelEffects[0].transform.root.gameObject.activeInHierarchy) //Aleady created all platfoms -> create the last platform with the finish line
+            {
+                //Create the finish platform
+                FinishPlatformController finishPlatformController = PoolManager.Instance.GetFinishPlatformController(currentLevelConfig.PlatformType);
+                finishPlatformController.transform.position = nextPlatformPosition;
+                finishPlatformController.gameObject.SetActive(true);
+
+                //Enable the complete level effects
+                completedLevelEffects[0].transform.root.gameObject.SetActive(true);
+                completedLevelEffects[0].transform.root.transform.position = nextPlatformPosition;
+            }
+            else if (createdPlatformAmount < totalPlatformAmount) //Still not create all platform -> continue to create next platform
+            {
+                PlatformController platformController = PoolManager.Instance.GetPlatformController(currentLevelConfig.PlatformType);
+                platformController.transform.position = nextPlatformPosition;
+                platformController.gameObject.SetActive(true);
+                if (!isCreatedObjects)
+                {
+                    nextPlatformPosition = platformController.transform.position + Vector3.forward * platformController.MeshRenderer.bounds.size.z;
+                }
+                else
+                {
+                    if (Random.value <= currentLevelConfig.DistanceFrequency)
+                    {
+                        platformController.transform.position += Vector3.forward * Random.Range(currentLevelConfig.MinDistanceAmount, currentLevelConfig.MaxDistanceAmount);
+                    }
+                    nextPlatformPosition = platformController.transform.position + Vector3.forward * platformController.MeshRenderer.bounds.size.z;
+
+
+                    PlatformParameterData parameterData = new PlatformParameterData();
+                    parameterData.SetObstacleAmount((!isCreatedObjects) ? 0 : Random.Range(currentLevelConfig.MinObstacleAmount, currentLevelConfig.MaxObstacleAmount));
+                    parameterData.SetObstacleSize(currentLevelConfig.ObstacleSizes[Random.Range(0, currentLevelConfig.ObstacleSizes.Length)]);
+                    parameterData.SetMovingObstacleFrequency(currentLevelConfig.MovingObstacleFrequency);
+                    parameterData.SetMinObstacleMovingSpeed(Random.Range(currentLevelConfig.MinObstacleMovingSpeed, currentLevelConfig.MaxObstacleMovingSpeed));
+                    parameterData.SetCoinFrequency(currentLevelConfig.CoinFrequency);
+                    parameterData.SetCoinAmount(Random.Range(currentLevelConfig.MinCoinAmount, currentLevelConfig.MaxCoinAmount));
+                    parameterData.SetLaserFrequency(currentLevelConfig.LaserFrequency);
+                    parameterData.SetMagnetFrequency(currentLevelConfig.MagnetFrequency);
+                    parameterData.SetSpeedBoostFrequency(currentLevelConfig.BoostFrequency);
+
+                    platformController.OnSetup(parameterData);
+                }
+                createdPlatformAmount++;
+                if (createdPlatformAmount == totalPlatformAmount)
+                {
+                    //Reset position for the finish platform
+                    nextPlatformPosition = platformController.transform.position + Vector3.forward * platformController.MeshRenderer.bounds.extents.z;
+                }
+            }
+        }
+
+    }
+}
